@@ -1,15 +1,53 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
+import '../../core/model/user_model.dart';
+import '../../core/service/firebase_crud.dart';
+import '../../core/service/google_signin.dart';
 
+// ignore: must_be_immutable
 class GameView extends StatefulWidget {
-  const GameView({Key? key}) : super(key: key);
+  String userId;
+  GameView({
+    Key? key,
+    required this.userId,
+  }) : super(key: key);
 
   @override
   State<GameView> createState() => _GameViewState();
 }
 
 class _GameViewState extends State<GameView> {
+  late UserModel user;
+  @override
+  void initState() {
+    super.initState();
+    user = UserModel();
+    activateListeners();
+  }
+
+  void activateListeners() {
+    FirebaseHelper.instance.getReference
+        .child(widget.userId)
+        .onValue
+        .listen((event) {
+      final data = Map<String, dynamic>.from(event.snapshot.value as dynamic);
+      setState(() {
+        data.forEach((key, value) {
+          if (key == "computer_score") {
+            computerScore = value;
+          } else {
+            playerScore = value;
+          }
+          user.userId = widget.userId;
+          user.computerScore = computerScore;
+          user.userScore = playerScore;
+        });
+      });
+    });
+  }
+
   final _random = Random();
   List<String> boxes = [
     "square",
@@ -38,6 +76,7 @@ class _GameViewState extends State<GameView> {
     [0, 4, 8],
     [2, 4, 6]
   ];
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -68,6 +107,22 @@ class _GameViewState extends State<GameView> {
           ),
         ),
       ),
+      floatingActionButton: signOutFAB(context),
+    );
+  }
+
+  FloatingActionButton signOutFAB(BuildContext context) {
+    return FloatingActionButton(
+      backgroundColor: Colors.white,
+      child: const Icon(
+        Icons.logout,
+        color: Colors.blue,
+        size: 30,
+      ),
+      onPressed: () {
+        GoogleSignHepler.instance.sigOut();
+        Navigator.pop(context);
+      },
     );
   }
 
@@ -77,8 +132,9 @@ class _GameViewState extends State<GameView> {
       children: [
         const Text("Scores:",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        Text("Player: $playerScore", style: const TextStyle(fontSize: 20)),
-        Text("Computer: $computerScore", style: const TextStyle(fontSize: 20)),
+        Text("Player: ${user.userScore}", style: const TextStyle(fontSize: 20)),
+        Text("Computer: ${user.computerScore}",
+            style: const TextStyle(fontSize: 20)),
       ],
     );
   }
@@ -137,10 +193,13 @@ class _GameViewState extends State<GameView> {
       ),
     );
   }
+}
 
+extension _GameController on _GameViewState {
   void playerPlays(int index) {
     playerChoice.add(index);
     emptyBox.remove(index);
+    // ignore: invalid_use_of_protected_member
     setState(() {
       if (lastValue == "x") {
         boxes[index] = "o";
@@ -157,6 +216,7 @@ class _GameViewState extends State<GameView> {
       int cmpIndex = emptyBox[_random.nextInt(emptyBox.length)];
       computerChoice.add(cmpIndex);
       emptyBox.remove(cmpIndex);
+      // ignore: invalid_use_of_protected_member
       setState(() {
         if (lastValue == "x") {
           boxes[cmpIndex] = "o";
@@ -174,7 +234,8 @@ class _GameViewState extends State<GameView> {
       if (playerChoice.contains(item[0]) &&
           playerChoice.contains(item[1]) &&
           playerChoice.contains(item[2])) {
-        playerScore++;
+        user.userScore = user.userScore! + 1;
+        FirebaseHelper.instance.scoreEkle(user: user);
         _whoIsTheWinner(context, "player");
         return true;
       }
@@ -187,7 +248,8 @@ class _GameViewState extends State<GameView> {
       if (computerChoice.contains(item[0]) &&
           computerChoice.contains(item[1]) &&
           computerChoice.contains(item[2])) {
-        computerScore++;
+        user.computerScore = user.computerScore! + 1;
+        FirebaseHelper.instance.scoreEkle(user: user);
         _whoIsTheWinner(context, "computer");
         return true;
       }
@@ -212,6 +274,7 @@ class _GameViewState extends State<GameView> {
       buttons: [
         DialogButton(
           onPressed: () {
+            // ignore: invalid_use_of_protected_member
             setState(() {
               isFinish = false;
               lastValue = "o";
