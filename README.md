@@ -8,3 +8,6 @@ I used Firebase for authentication and storing data.
 
 ## Game Page
 ![GameView](https://github.com/ertugrulkoca/tic_tac_toe_FLUTTER/blob/main/gameView.png)
+
+## Win Page
+![winView](https://github.com/ertugrulkoca/tic_tac_toe_FLUTTER/blob/main/win.png)
